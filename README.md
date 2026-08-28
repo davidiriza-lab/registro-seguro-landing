@@ -16,6 +16,7 @@ lib/capi.ts                   # envío a la Conversions API de Meta (no viene en
 components/FormularioRegistro.tsx  # formulario mínimo con honeypot
 sql/schema.sql                # tabla registros con RLS activado y sin policies
 sql/funciones-cerradas.sql    # REVOKE EXECUTE de PUBLIC en funciones
+next.config.ts                # 6 cabeceras de seguridad (HSTS, frame-ancestors, nosniff, Referrer-Policy...)
 .env.example                  # variables necesarias
 ```
 
@@ -52,7 +53,8 @@ Requiere un proyecto Next.js (App Router, TypeScript) con el alias `@/` apuntand
      -d '{"nombre":"Prueba","email":"prueba@ejemplo.com","telefono":"3312345678","pais":"MX"}'
    ```
    Un teléfono de 9 dígitos debe regresar 400 con mensaje claro; el honeypot (`website`) lleno regresa 200 y no crea fila.
-7. Verifica que anon no lee la tabla:
+7. Copia `next.config.ts` (o pega su `headers()` en el tuyo) y verifica en producción con `curl -sI https://tu-landing.com | grep -iE 'strict-transport|x-frame|content-security'`.
+8. Verifica que anon no lee la tabla:
    ```bash
    curl -s -o /dev/null -w '%{http_code}\n' -H "apikey: $PUBLISHABLE_KEY" -H "Authorization: Bearer $PUBLISHABLE_KEY" \
      "https://tu-proyecto.supabase.co/rest/v1/registros?select=email&limit=1"
@@ -69,3 +71,4 @@ Sobre `lib/capi.ts`: la guía lo importa como pieza dada y no lo muestra; aquí 
 - `after()` corre aunque hayas respondido 500 o hecho redirect: llámalo después de la escritura, nunca antes.
 - El rate limit en memoria no es global en serverless (cada instancia tiene su mapa). Sirve contra el doble clic; contra un ataque real usa Upstash/Redis. El honeypot filtra más.
 - En Vercel, `env add` por stdin puede guardar una cadena vacía; usa `--value`.
+- No agregues `Access-Control-Allow-Origin: *` a `/api/registro`: si el formulario vive en el mismo dominio no necesitas CORS, y si vive en otro, lista cerrada de orígenes + handler `OPTIONS` (ver la guía).
